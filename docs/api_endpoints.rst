@@ -81,3 +81,13 @@ Basing on example from installation section :doc:`Installation </installation>`
 
     - access_token
     - token_secret
+
+
+Multi-Factor/OTP Authentication
+-------------------------------
+
+- /rest-auth/verify-otp/ (POST)
+
+    - otp_device
+    - otp_token
+    - otp_challenge

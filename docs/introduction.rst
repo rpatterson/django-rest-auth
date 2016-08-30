@@ -13,6 +13,7 @@ Features
 * Password change
 * Password reset via e-mail
 * Social Media authentication
+* Multi-factor/OTP authentication via `django-otp <http://pythonhosted.org/django-otp/>`_
 
 
 Apps structure
@@ -20,6 +21,8 @@ Apps structure
 
 * ``rest_auth`` has basic auth functionality like login, logout, password reset and password change
 * ``rest_auth.registration`` has logic related with registration and social media authentication
+* ``rest_auth.rest_otp`` has logic related with two-factor, multi-factor, and
+  OTP authentication
 
 
 Angular app

@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.9.0
+-----
+- added support for django-otp
+
 0.8.0
 -----
 - added support for django-rest-framework-jwt

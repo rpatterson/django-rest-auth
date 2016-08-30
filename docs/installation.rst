@@ -161,3 +161,53 @@ By default, ``django-rest-auth`` uses Django's Token-based authentication. If yo
 
     REST_USE_JWT = True
 
+
+
+Milt-factory/OTP Authentication (optional)
+------------------------------------------
+
+With this optional add-on installed and set up, the ``/rest-auth/login/``
+endpoint will include a list of ``otp_devices`` in the response which can be
+used to ``POST`` the OTP verification ``otp_device`` and ``otp_token`` to the
+``/rest-auth/otp-verify/`` endpoint at which point the user will be verified
+as long as the
+``django.contrib.auth.middleware.SessionAuthenticationMiddleware`` is being
+used.  IOW, requests authenticated with tokens will not have ``django-otp``
+support ``request.user.is_verified()``.
+
+#. Install dependencies:
+
+    .. code-block:: python
+
+        pip install django-otp
+
+#. Add ``django_otp`` and the plugin apps to INSTALLED_APPS in your django
+   settings.py.  For example:
+
+    .. code-block:: python
+
+        INSTALLED_APPS = (
+            ...
+            'django_otp',
+            'django_otp.plugins.otp_static',
+            'django_otp.plugins.otp_totp',
+            ...
+        )
+
+
+#. Add ``rest_auth.rest_otp`` urls *before* ``rest_auth.urls``:
+
+    .. code-block:: python
+
+        urlpatterns = patterns('',
+            ...
+            url(r'^rest-auth/', include('rest_auth.rest_otp')),
+            url(r'^rest-auth/', include('rest_auth.urls')),
+            ...
+        )
+
+#. `Set up Django session-based authentication
+   <https://docs.djangoproject.com/en/1.10/topics/auth/#installation>`_.
+
+#. Use the ``rest_auth.rest_otp.OTPSessionAuthentication`` in your
+   ``rest_framework`` views' ``authentication_classes`` as appropriate.
