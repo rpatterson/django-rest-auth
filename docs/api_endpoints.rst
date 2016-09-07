@@ -86,8 +86,15 @@ Basing on example from installation section :doc:`Installation </installation>`
 Multi-Factor/OTP Authentication
 -------------------------------
 
-- /rest-auth/verify-otp/ (POST)
+- /rest-auth/otp/login/ (POST)
+
+    - username or email
+    - password
+
+- /rest-auth/otp/verify/ (POST)
 
     - otp_device
     - otp_token
     - otp_challenge
+
+- /rest-auth/otp/logout/ (POST)

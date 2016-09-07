@@ -1,5 +1,6 @@
 from django.contrib import auth
 
+from rest_framework import decorators
 from rest_framework import response
 from rest_framework import viewsets
 from rest_framework import permissions
@@ -33,14 +34,15 @@ class OTPLoginView(views.LoginView):
 
 class OTPVerifyViewset(viewsets.GenericViewSet):
     """
-    Duplicate the form delegation logic in django_otp.views:login.
+    Endpoints to verify OTP codes.
     """
 
     serializer_class = serializers.OTPTokenSerializer
     authentication_classes = (authentication.SessionAuthentication, )
     permission_classes = [permissions.IsAuthenticated]
 
-    def create(self, request, *args, **kwargs):
+    @decorators.list_route(methods=['post'])
+    def verify(self, request, *args, **kwargs):
         """
         Perform the actual login if the serializer/form validates.
         """

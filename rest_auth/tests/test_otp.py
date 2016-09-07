@@ -80,7 +80,7 @@ class OTPTests(test.TestCase, test_base.BaseAPITestCase):
 
         # Login prompts for MFA code on login after provisioning
         login_response = self.post(
-            '/login/',
+            '/otp/login/',
             data=dict(username=self.USERNAME, password=self.PASS),
             status_code=200)
         # Authenticated view fails before verification
@@ -97,7 +97,7 @@ class OTPTests(test.TestCase, test_base.BaseAPITestCase):
 
         # Invalid token returns an error
         otp_response = self.post(
-            '/otp-verify/',
+            '/otp/verify/',
             data=dict(
                 otp_device=login_response.json['otp_devices'][0][0],
                 otp_token='FOOWRONGTOKEN'),
@@ -111,7 +111,7 @@ class OTPTests(test.TestCase, test_base.BaseAPITestCase):
 
         # Send OTP verification code
         otp_response = self.post(
-            '/otp-verify/',
+            '/otp/verify/',
             data=dict(
                 otp_device=login_response.json['otp_devices'][0][0],
                 otp_token=oath.TOTP(
@@ -130,7 +130,7 @@ class OTPTests(test.TestCase, test_base.BaseAPITestCase):
         The OTP middlware is required to use the authentication class.
         """
         self.post(
-            '/login/',
+            '/otp/login/',
             data=dict(username=self.USERNAME, password=self.PASS),
             status_code=200)
         self.assertRaises(AssertionError, self.get, '/user/', status_code=500)
@@ -142,7 +142,7 @@ class OTPTests(test.TestCase, test_base.BaseAPITestCase):
         Authentication succeeds if the user has no OTP device.
         """
         self.post(
-            '/login/',
+            '/otp/login/',
             data=dict(username=self.USERNAME, password=self.PASS),
             status_code=200)
         self.get('/user/', status_code=200)
