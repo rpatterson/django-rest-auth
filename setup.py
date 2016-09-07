@@ -34,6 +34,7 @@ setup(
     ],
     extras_require={
         'with_social': ['django-allauth>=0.25.0'],
+        'with_otp': ['django-two-factor-auth'],
     },
     tests_require=[
         'responses>=0.5.0',

@@ -91,6 +91,16 @@ Multi-Factor/OTP Authentication
     - username or email
     - password
 
+- /rest-auth/otp/provision/ (POST)
+
+    - username or email
+    - password
+
+- /rest-auth/otp/backup/ (POST)
+
+    - username or email
+    - password
+
 - /rest-auth/otp/verify/ (POST)
 
     - otp_device

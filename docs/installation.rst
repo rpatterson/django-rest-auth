@@ -175,11 +175,11 @@ as long as the
 used.  IOW, requests authenticated with tokens will not have ``django-otp``
 support ``request.user.is_verified()``.
 
-#. Install dependencies:
+#. Install dependencies by installing ``django-allauth`` as follows.
 
     .. code-block:: python
 
-        pip install django-otp
+        pip install django-rest-auth[with_otp]
 
 #. Add ``django_otp`` and the plugin apps to INSTALLED_APPS in your django
    settings.py.  For example:

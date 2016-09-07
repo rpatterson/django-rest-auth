@@ -3,6 +3,8 @@ from rest_framework import fields
 
 from django_otp import forms
 
+from .. import serializers as auth_serializers
+
 
 class FormSerializer(serializers.Serializer):
     """
@@ -54,3 +56,20 @@ class OTPTokenSerializer(FormSerializer):
     """
 
     form_class = forms.OTPTokenForm
+
+
+class NonEmptyLoginSerializer(auth_serializers.LoginSerializer):
+    """
+    Don't allow empty login credentials.
+    """
+
+    def validate_empty_values(self, data):
+        """
+        Don't allow empty login credentials.
+        """
+        try:
+            return super(
+                NonEmptyLoginSerializer, self).validate_empty_values(data)
+        except fields.SkipField:  # pragma: no cover
+            # TODO can't reproduce this in the APITestClient
+            self.fail('required')
