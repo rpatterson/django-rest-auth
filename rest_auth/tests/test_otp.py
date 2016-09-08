@@ -2,10 +2,13 @@
 Tests for `django-otp` integration.
 """
 
+import sys
+from logging import handlers
 import base64
 import binascii
 
 from django import test
+from django.core.handlers import base
 from django.contrib import auth
 from django.conf import urls
 from django.contrib.sites import shortcuts
@@ -140,7 +143,18 @@ class OTPTests(test_base.BaseAPITestCase):
             '/otp/login/',
             data=dict(username=self.USERNAME, password=self.PASS),
             status_code=200)
-        self.assertRaises(AssertionError, self.get, '/user/', status_code=500)
+
+        try:
+            # Hack to suppress log messages
+            handler = handlers.MemoryHandler(capacity=sys.maxint)
+            base.logger.addHandler(handler)
+            base.logger.propagate = False
+
+            self.assertRaises(
+                AssertionError, self.get, '/user/', status_code=500)
+        finally:
+            base.logger.removeHandler(handler)
+            base.logger.propagate = True
 
     @test.modify_settings(MIDDLEWARE_CLASSES=dict(
         append='django_otp.middleware.OTPMiddleware'))
