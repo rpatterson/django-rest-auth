@@ -2,22 +2,13 @@ import json
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
-from django.test.client import Client, MULTIPART_CONTENT
 from django.utils.encoding import force_text
 
 from rest_framework import status
+from rest_framework import test
 
 
-class APIClient(Client):
-
-    def patch(self, path, data='', content_type=MULTIPART_CONTENT, follow=False, **extra):
-        return self.generic('PATCH', path, data, content_type, **extra)
-
-    def options(self, path, data='', content_type=MULTIPART_CONTENT, follow=False, **extra):
-        return self.generic('OPTIONS', path, data, content_type, **extra)
-
-
-class BaseAPITestCase(object):
+class BaseAPITestCase(test.APITestCase):
 
     """
     base for API tests:
@@ -89,7 +80,6 @@ class BaseAPITestCase(object):
 
     def init(self):
         settings.DEBUG = True
-        self.client = APIClient()
 
         self.login_url = reverse('rest_login')
         self.logout_url = reverse('rest_logout')

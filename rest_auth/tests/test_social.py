@@ -1,6 +1,5 @@
 import json
 
-from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.test.utils import override_settings
 from django.contrib.sites.models import Site
@@ -15,7 +14,7 @@ from .test_base import BaseAPITestCase
 
 
 @override_settings(ROOT_URLCONF="tests.urls")
-class TestSocialAuth(TestCase, BaseAPITestCase):
+class TestSocialAuth(BaseAPITestCase):
 
     USERNAME = 'person'
     PASS = 'person'

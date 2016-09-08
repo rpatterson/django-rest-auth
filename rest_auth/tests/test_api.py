@@ -1,5 +1,5 @@
 from django.core.urlresolvers import reverse
-from django.test import TestCase, override_settings
+from django.test import override_settings
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.conf import settings
@@ -11,7 +11,7 @@ from .test_base import BaseAPITestCase
 
 
 @override_settings(ROOT_URLCONF="tests.urls")
-class APITestCase1(TestCase, BaseAPITestCase):
+class APITestCase1(BaseAPITestCase):
     """
     Case #1:
     - user profile: defined

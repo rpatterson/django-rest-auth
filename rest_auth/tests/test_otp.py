@@ -37,7 +37,7 @@ urlpatterns = [
 
 
 @test.override_settings(ROOT_URLCONF="tests.test_otp")
-class OTPTests(test.TestCase, test_base.BaseAPITestCase):
+class OTPTests(test_base.BaseAPITestCase):
     """
     Tests for `django-otp` integration.
     """
@@ -51,6 +51,7 @@ class OTPTests(test.TestCase, test_base.BaseAPITestCase):
         Set up a user.
         """
         super(OTPTests, self).setUp()
+        self.init()
 
         self.user = auth.get_user_model().objects.create(
             username=self.USERNAME, email=self.EMAIL)
