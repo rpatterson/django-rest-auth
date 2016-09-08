@@ -13,9 +13,14 @@ from django.contrib import auth
 from django.conf import urls
 from django.contrib.sites import shortcuts
 
+from rest_framework import decorators
+from rest_framework import response
+from rest_framework import routers
+from rest_framework import viewsets
+from rest_framework import permissions
+
 from two_factor import utils
 
-from rest_auth import views
 from rest_auth.rest_otp import authentication
 from rest_auth.rest_otp import urls as otp_urls
 
@@ -23,19 +28,27 @@ from . import urls as test_urls
 from . import test_base
 
 
-class OTPVerifiedUserDetailsView(views.UserDetailsView):
+class OTPVerifiedViewSet(viewsets.ViewSet):
     """
     A view that requires authentication and verification.
     """
 
     authentication_classes = (
         authentication.OTPSessionAuthentication, )
+    permission_classes = (permissions.IsAuthenticated, )
 
+    @decorators.list_route(methods=['post'])
+    def verify_post(self, request, *args, **kwargs):
+        """
+        Verify that posts work with OTPSessionAuthentication.
+        """
+        return response.Response(request.data)
+
+router = routers.DefaultRouter()
+router.register(r'user', OTPVerifiedViewSet, base_name='user')
 
 urlpatterns = [
-    urls.url(
-        r'^user/$', OTPVerifiedUserDetailsView.as_view(),
-        name='rest_otp_user_details'),
+    urls.url(r'^', urls.include(router.urls)),
 ] + otp_urls.urlpatterns + test_urls.urlpatterns
 
 
@@ -48,6 +61,8 @@ class OTPTests(test_base.BaseAPITestCase):
     USERNAME = 'person'
     PASS = 'person'
     EMAIL = "person1@world.com"
+
+    post_data = dict(foo='bar')
 
     def setUp(self):
         """
@@ -78,7 +93,7 @@ class OTPTests(test_base.BaseAPITestCase):
                 device_model.objects.filter(user=self.user).exists(),
                 'MFA devices exist before provisioning')
         # Authenticated view fails before logging in
-        self.get('/user/', status_code=403)
+        self.post('/user/verify_post/', data=self.post_data, status_code=403)
 
         # Provision MFA devices
         totp_device = self.user.totpdevice_set.create(
@@ -94,7 +109,7 @@ class OTPTests(test_base.BaseAPITestCase):
             data=dict(username=self.USERNAME, password=self.PASS),
             status_code=200)
         # Authenticated view fails before verification
-        self.get('/user/', status_code=403)
+        self.post('/user/verify_post/', data=self.post_data, status_code=403)
         self.assertIn(
             'key', login_response.json,
             'Login response missing token')
@@ -132,8 +147,11 @@ class OTPTests(test_base.BaseAPITestCase):
             'success', otp_response.json,
             'MFA/OTP token verification response missing success message')
 
-        # Authenticated view works after verification
-        self.get('/user/', status_code=200)
+        # Authenticated views work after verification
+        post_response = self.post(
+            '/user/verify_post/', data=self.post_data, status_code=200)
+        self.assertEqual(
+            post_response.data, self.post_data, 'Wrong post response')
 
     def test_otp_login_wo_middleware(self):
         """
@@ -151,7 +169,8 @@ class OTPTests(test_base.BaseAPITestCase):
             base.logger.propagate = False
 
             self.assertRaises(
-                AssertionError, self.get, '/user/', status_code=500)
+                AssertionError, self.post, '/user/verify_post/',
+                data=self.post_data, status_code=500)
         finally:
             base.logger.removeHandler(handler)
             base.logger.propagate = True
