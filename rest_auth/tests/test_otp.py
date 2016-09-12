@@ -9,6 +9,7 @@ import binascii
 
 from django import test
 from django.core.handlers import base
+from django.middleware import csrf
 from django.contrib import auth
 from django.conf import urls
 from django.contrib.sites import shortcuts
@@ -152,6 +153,37 @@ class OTPTests(test_base.BaseAPITestCase):
             '/user/verify_post/', data=self.post_data, status_code=200)
         self.assertEqual(
             post_response.data, self.post_data, 'Wrong post response')
+
+    @test.modify_settings(MIDDLEWARE_CLASSES=dict(
+        append='django_otp.middleware.OTPMiddleware'))
+    def test_otp_auth_request_stream(self):
+        """
+        The OTP authentication class doesn't exhaust the request stream.
+
+        Use CSRF checks to trigger something that reads POST during
+        authentication.
+        """
+        client = self.client_class(enforce_csrf_checks=True)
+        post_data = self.post_data.copy()
+
+        # Authenticated view fails before logging in
+        client.post('/user/verify_post/', data=post_data, status_code=403)
+
+        client.post(
+            '/otp/login/',
+            data=dict(username=self.USERNAME, password=self.PASS),
+            status_code=200)
+
+        # After login, the POST works
+        wo_csrf_response = client.post(
+            '/user/verify_post/', data=post_data, status_code=403)
+        post_data['csrfmiddlewaretoken'] = csrf.get_token(
+            wo_csrf_response.wsgi_request)
+        post_response = client.post(
+            '/user/verify_post/', data=post_data, status_code=200)
+        self.assertEqual(
+            dict(item for item in post_response.data.items()), post_data,
+            'Wrong post response')
 
     def test_otp_login_wo_middleware(self):
         """

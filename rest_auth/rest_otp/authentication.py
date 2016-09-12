@@ -1,6 +1,5 @@
 import django_otp
 
-from rest_framework.request import clone_request
 from rest_framework import authentication
 from rest_framework import exceptions
 
@@ -23,30 +22,33 @@ class OTPStackedAuthentication(authentication.BaseAuthentication):
         """
         Enforce OTP verification on stacked authenticators.
         """
-        self.request = clone_request(request, request.method)
-        self.request.authenticators = self.get_authenticators()
+        authenticators = request.authenticators
+        try:
+            request.authenticators = self.get_authenticators()
 
-        if self.request.successful_authenticator is None:
-            # None of the stacked authenticators authenticated, so we don't
-            # either.  Allow moving onto to any other authentication_classes
-            # outside our own
-            return
+            if request.successful_authenticator is None:
+                # None of the stacked authenticators authenticated, so we
+                # don't either.  Allow moving onto to any other
+                # authentication_classes outside our own
+                return
 
-        if not hasattr(self.request.user, 'is_verified'):
-            raise AssertionError(
-                'The OTPMiddleware is required but has not been applied.')
+            if not hasattr(request.user, 'is_verified'):
+                raise AssertionError(
+                    'The OTPMiddleware is required but has not been applied.')
 
-        if (
-                self.require_devices or
-                django_otp.user_has_device(self.request.user)):
-                if self.request.user.is_verified():
-                    return (self.request.user, self.request.auth)
-                else:
-                    raise exceptions.AuthenticationFailed(
-                        'The user has not been verified through OTP.')
+            if (
+                    self.require_devices or
+                    django_otp.user_has_device(request.user)):
+                    if request.user.is_verified():
+                        return (request.user, request.auth)
+                    else:
+                        raise exceptions.AuthenticationFailed(
+                            'The user has not been verified through OTP.')
+        finally:
+            request.authenticators = authenticators
 
         # OTP verification not required
-        return (self.request.user, self.request.auth)
+        return (request.user, request.auth)
 
 
 class OTPSessionAuthentication(OTPStackedAuthentication):
