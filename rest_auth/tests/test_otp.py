@@ -20,6 +20,8 @@ from rest_framework import routers
 from rest_framework import viewsets
 from rest_framework import permissions
 
+from django_otp import oath
+
 from two_factor import utils
 
 from rest_auth.rest_otp import authentication
@@ -27,6 +29,20 @@ from rest_auth.rest_otp import urls as otp_urls
 
 from . import urls as test_urls
 from . import test_base
+
+
+def get_token(totp_device):
+    """
+    Generate a valid code for the TOTP device.
+    """
+    totp_device.refresh_from_db()
+    generator = oath.TOTP(
+        totp_device.bin_key, totp_device.step, totp_device.t0,
+        totp_device.digits)
+    # Ensure the code will be valid
+    totp_device.last_t = generator.t() - 1
+    totp_device.save()
+    return generator.token()
 
 
 class OTPVerifiedViewSet(viewsets.ViewSet):
@@ -84,7 +100,6 @@ class OTPTests(test_base.BaseAPITestCase):
         A user must enter a code when they've enabled MFA.
         """
         import django_otp
-        from django_otp import oath
 
         # Verify initial conditions
         self.assertEqual(
@@ -264,6 +279,7 @@ class OTPTests(test_base.BaseAPITestCase):
         self.assertEqual(
             self.user.staticdevice_set.count(), 1,
             'Wrong number of backup code devices')
+        static_device = self.user.staticdevice_set.get()
         self.assertEqual(
             self.user.staticdevice_set.get().token_set.count(), 10,
             'Wrong number of backup codes generated')
@@ -274,6 +290,50 @@ class OTPTests(test_base.BaseAPITestCase):
             self.assertIn(
                 token.token, provision_response.json['backup_codes'],
                 'Provision response missing backup code')
+
+        # The TOTP device is not confirmed initially
+        self.assertFalse(
+            totp_device.confirmed,
+            'TOTP device confirmed after initial provisioning')
+        self.assertFalse(
+            static_device.confirmed,
+            'Backup device confirmed after initial provisioning')
+        totp_data = dict(otp_device=totp_device.persistent_id)
+        # OTP verification fails prior to confirming
+        self.post(
+            '/otp/verify/', data=dict(
+                totp_data, otp_token=get_token(totp_device)),
+            status_code=400)
+        backup_token = static_device.token_set.all()[0].token
+        backup_data = dict(
+            otp_device=static_device.persistent_id, otp_token=backup_token)
+        self.post(
+            '/otp/verify/', data=backup_data,
+            status_code=400)
+        # TOTP confirmation fails without credentials
+        self.post(
+            '/otp/confirm/', data=dict(otp_token=get_token(totp_device)),
+            status_code=400)
+        # Confirmation fails with backup codes
+        self.post(
+            '/otp/confirm/', data=dict(
+                otp_token=backup_token,
+                username=self.USERNAME, password=self.PASS),
+            status_code=400)
+        confirm_response = self.post(
+            '/otp/confirm/', data=dict(
+                otp_token=get_token(totp_device),
+                username=self.USERNAME, password=self.PASS),
+            status_code=200)
+        self.assertIn(
+            'success', confirm_response.json,
+            'TOTP device confirmation response missing success message')
+        # OTP verification works after confirming
+        self.post(
+            '/otp/verify/', data=dict(
+                totp_data, otp_token=get_token(totp_device)),
+            status_code=200)
+        self.post('/otp/verify/', data=backup_data, status_code=200)
 
         # Cannot provision when already provisioned
         duplicate_response = self.post(
@@ -287,7 +347,7 @@ class OTPTests(test_base.BaseAPITestCase):
             self.user.staticdevice_set.count(), 1,
             'Wrong number of backup code devices after duplicate provision')
         self.assertEqual(
-            self.user.staticdevice_set.get().token_set.count(), 10,
+            self.user.staticdevice_set.get().token_set.count(), 9,
             'Wrong number of backup codes after duplicate provision')
         self.assertIn(
             'already', duplicate_response.json[0],
@@ -305,7 +365,7 @@ class OTPTests(test_base.BaseAPITestCase):
             self.user.staticdevice_set.count(), 1,
             'Wrong number of backup code devices')
         self.assertEqual(
-            self.user.staticdevice_set.get().token_set.count(), 10,
+            self.user.staticdevice_set.get().token_set.count(), 9,
             'Wrong number of backup codes generated')
         self.assertIn(
             'backup_codes', backup_response.json,

@@ -73,8 +73,10 @@ class OTPProvisionViewset(OTPVerifyViewset):
 
     serializer_class = serializers.NonEmptyLoginSerializer
 
-    totp_device = dict(name='Authenticator App')
-    backup_device = dict(name='Backup/Recovery Codes')
+    totp_device = dict(
+        confirmed=False, name='Authenticator App')
+    backup_device = dict(
+        confirmed=False, name='Backup/Recovery Codes')
     number_of_tokens = 10
 
     @decorators.list_route(methods=['post'])
@@ -121,6 +123,31 @@ class OTPProvisionViewset(OTPVerifyViewset):
 
         return response.Response(dict(
             otpauth_url=otpauth_url, backup_codes=backup_codes))
+
+    @decorators.list_route(methods=['post'])
+    def confirm(self, request, *args, **kwargs):
+        """
+        Confirm the TOTP devices with the users credentials and a code.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        totp_device = request.user.totpdevice_set.get()
+        totp_device.confirmed = True
+        totp_device.save()
+
+        backup_device = request.user.staticdevice_set.get()
+        backup_device.confirmed = True
+        backup_device.save()
+
+        request.data['otp_device'] = totp_device.persistent_id
+        verify_viewset = OTPVerifyViewset()
+        verify_viewset.request = request
+        verify_viewset.initial(request, *args, **kwargs)
+        verify_viewset.verify(request, *args, **kwargs)
+
+        return response.Response(dict(
+            success="Successfully confirmed TOTP device."))
 
 
 class OTPLogoutView(views.LogoutView):
