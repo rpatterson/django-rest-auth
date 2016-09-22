@@ -100,20 +100,26 @@ class OTPProvisionViewset(OTPVerifyViewset):
         serializer.is_valid(raise_exception=True)
 
         if (
-                request.user.totpdevice_set.exists() or
-                request.user.staticdevice_set.exists()):
+                request.user.totpdevice_set.filter(confirmed=True).exists() or
+                request.user.staticdevice_set.filter(confirmed=True).exists()
+        ):
             raise drf_serializers.ValidationError(
                 'OTP devices already exist for this user')
 
-        totp_device = request.user.totpdevice_set.create(**self.totp_device)
-        backup_device = request.user.staticdevice_set.create(
-            **self.backup_device)
-        backup_codes = [
-            models.StaticToken.random_token()
-            for n in range(self.number_of_tokens)]
-        backup_device.token_set.bulk_create([
-            models.StaticToken(token=token, device=backup_device)
-            for token in backup_codes])
+        totp_device, totp_created = (
+            request.user.totpdevice_set.get_or_create(**self.totp_device))
+        backup_device, backup_created = (
+            request.user.staticdevice_set.get_or_create(**self.backup_device))
+        if backup_created:
+            backup_codes = [
+                models.StaticToken.random_token()
+                for n in range(self.number_of_tokens)]
+            backup_device.token_set.bulk_create([
+                models.StaticToken(token=token, device=backup_device)
+                for token in backup_codes])
+        else:
+            backup_codes = backup_device.token_set.values_list(
+                'token', flat=True)
 
         b32key = base64.b32encode(binascii.unhexlify(totp_device.key))
         otpauth_url = utils.get_otpauth_url(

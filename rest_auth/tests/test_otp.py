@@ -276,6 +276,22 @@ class OTPTests(test_base.BaseAPITestCase):
             provision_response.json['otpauth_url'], otpauth_url,
             'Wrong provision response TOTP oath URL')
 
+        # Subsequent provision requests prior to confirming return the
+        # existing devices.
+        subsequent_response = self.post(
+            '/otp/provision/',
+            data=dict(username=self.USERNAME, password=self.PASS),
+            status_code=200)
+        self.assertEqual(
+            self.user.totpdevice_set.count(), 1,
+            'Wrong number of TOTP devices')
+        self.assertIn(
+            'otpauth_url', subsequent_response.json,
+            'Subsequent response missing the TOTP oath URL')
+        self.assertEqual(
+            subsequent_response.json['otpauth_url'], otpauth_url,
+            'Wrong subsequent response TOTP oath URL')
+
         self.assertEqual(
             self.user.staticdevice_set.count(), 1,
             'Wrong number of backup code devices')
